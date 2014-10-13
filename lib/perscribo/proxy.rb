@@ -4,7 +4,7 @@ require 'active_support/core_ext/object/try'
 module Perscribo
   class Proxy
     DEFAULT_LINE_SPLITTER = proc do |text|
-      collapse_lines!(text.split("\n").reject { |i| i.strip.empty? })
+      Proxy.collapse_lines!(text.split("\n").reject { |i| i.strip.empty? })
     end
 
     def initialize(logger, &block)
@@ -25,6 +25,14 @@ module Perscribo
       end
     end
 
+    def self.collapse_lines!(lines, *collapsables)
+      lines.each_index do |i|
+        prev, curr = lines[i - 1], lines[i]
+        next if collapsables.any? && collapsables.exclude?(lines[i])
+        lines.delete_at(i) if i > 0 && prev == curr
+      end
+    end
+
     private
 
     def handle_line(identifier, line)
@@ -37,14 +45,6 @@ module Perscribo
       captures = line.match(Perscribo::MATCH_REGEXP).try(:captures)
       args = captures || [:unknown, line]
       args.unshift(args.shift.to_sym)
-    end
-
-    def collapse_lines!(lines, *collapsables)
-      lines.each_index do |i|
-        prev, curr = lines[i - 1], lines[i]
-        next if collapsables.any? && collapsables.exclude?(lines[i])
-        lines.delete_at(i) if i > 0 && prev == curr
-      end
     end
   end
 end
