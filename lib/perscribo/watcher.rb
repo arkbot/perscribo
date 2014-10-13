@@ -1,3 +1,5 @@
+require 'active_support/core_ext/object/try'
+
 module Perscribo
   class Watcher
     def initialize(io_or_path, options = {}, &block)
@@ -13,7 +15,7 @@ module Perscribo
     private
 
     def watch(io_or_path, &block)
-      File.touch(io_or_path) if io_or_path.is_a?(String)
+      File.open(io_or_path, 'w') {} if io_or_path.is_a?(String)
       fork do
         open(io_or_path, 'r') do |io|
           io.seek(0, ::IO::SEEK_END)

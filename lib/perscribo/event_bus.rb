@@ -1,3 +1,5 @@
+require 'active_support/core_ext/object/try'
+
 module Perscribo
   class EventBus
     def initialize
@@ -10,7 +12,9 @@ module Perscribo
     end
 
     def trigger(queue, event, *args)
-      @queues.try(queue).try(event).try(:call, *args)
+      @queues[queue][event].try(:call, *args)
+    rescue
+      # STUB
     end
   end
 end

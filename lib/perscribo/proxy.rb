@@ -1,4 +1,5 @@
 require 'perscribo/format'
+require 'active_support/core_ext/object/try'
 
 module Perscribo
   class Proxy
