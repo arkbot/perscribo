@@ -12,9 +12,9 @@ module Perscribo
       @line_splitter = block || DEFAULT_LINE_SPLITTER
     end
 
-    def register(identifier, io_or_path, &block)
+    def register(identifier, io_or_path, watcher_opts = {}, &block)
       block ||= @line_splitter
-      @interfaces[identifier] = Watcher.new(io_or_path) do |lines|
+      @interfaces[identifier] = Watcher.new(io_or_path, watcher_opts) do |lines|
         block.call(lines).each { |line| handle_line(identifier, line) }
       end
     end
