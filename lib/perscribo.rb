@@ -1,5 +1,6 @@
 require 'perscribo/event_bus'
 require 'perscribo/io'
+require 'perscribo/logger'
 require 'perscribo/proxy'
 require 'perscribo/version'
 require 'perscribo/watcher'

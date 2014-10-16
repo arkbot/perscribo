@@ -48,12 +48,15 @@ module Perscribo
         rewind_on_touch?(io)
         lines = io.read
         block.call(lines) unless lines.empty?
+        truncate_on_read?(io, lines)
         sleep 0.1
       end
     end
 
-    def parse_options(options = {})
+    def parse_options(options = nil)
+      options ||= {}
       options[:rewind_on_touch] ||= true
+      options[:truncate_on_read] ||= false
       options
     end
 
@@ -62,6 +65,11 @@ module Perscribo
       return unless @last_time < io.mtime
       io.rewind
       update_timestamp(io)
+    end
+
+    def truncate_on_read?(io, data)
+      return unless @options[:truncate_on_read]
+      File.truncate(io, 0) unless data.empty?
     end
 
     def update_timestamp(io)
