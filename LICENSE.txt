@@ -1,4 +1,4 @@
-Copyright (C) 2014 ADAM EBERLIN
+Copyright (C) 2014 Adam Eberlin
 
 MIT License
 
