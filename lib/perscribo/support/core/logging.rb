@@ -7,6 +7,43 @@ module Perscribo
   module Support
     module Core
       module Logging
+        class EndpointLogger < ::Logger
+          attr_accessor :endpoints
+
+          def initialize(*endpoints)
+            super('/dev/null')
+            @endpoints = endpoints
+            self.class.redirect_class_methods(self)
+            self.class.redirect_instance_methods(self)
+          end
+
+          def self.redirect_class_methods(this)
+            this.class.superclass.methods(false).each do |name|
+              this.class.define_method(name) do |*args, &block|
+                method_missing(name, *args, &block)
+              end
+            end
+          end
+
+          def self.redirect_instance_methods(this)
+            this.class.superclass.instance_methods(false).each do |name|
+              this.define_singleton_method(name) do |*args, &block|
+                method_missing(name, *args, &block)
+              end
+            end
+          end
+
+          def respond_to?(*args)
+            endpoints.collect { |i| i.respond_to?(*args) }.all?
+          end
+
+          def method_missing(m, *a, &b)
+            endpoints.collect { |i| i.try(m, *a, &b) }.last
+          rescue NameError, NoMethodError
+            super
+          end
+        end
+
         class ProxyLogger < ::Logger
           def initialize(*args)
             super
@@ -15,7 +52,8 @@ module Perscribo
 
           def self.match_formatter(sev, datetime, progname, msg)
             s = ::Logger::Severity.constants.find { |i| i.to_s == sev.to_s }
-            label = Constants::MATCH_FORMAT.gsub(':level', '%s') % s
+            label_format = ::Perscribo::Core::Constants::MATCH_FORMAT
+            label = label_format.gsub(':level', '%s') % s
             "#{label.downcase}#{msg}\n"
           end
 
@@ -39,18 +77,24 @@ module Perscribo
         end
 
         class SingletonLogger
-          def self.instance(klazz = MultiLogger, root_path, name)
+          def self.instance(klazz = ProxyLogger, root_path, name)
             root_path = File.expand_path(root_path)
             logdev = singleton_logfile(root_path, name)
             singleton_name(klazz, name).constantize.instance
           rescue NameError
             nesting, klazz_name = singleton_names(klazz, name)
             singleton = singleton_of(klazz, logdev)
-            nesting.constantize.const_set(klazz_name, singleton).instance
+            const_of(nesting, klazz_name, singleton).instance
           end
 
           class << self
             alias_method :[], :instance
+          end
+
+          def self.const_of(parent, const_name, const_value)
+            parent.constantize.const_get(const_name, false)
+          rescue NameError
+            parent.constantize.const_set(const_name, const_value)
           end
 
           def self.singleton_of(superklazz, logdev)

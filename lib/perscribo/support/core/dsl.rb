@@ -4,12 +4,23 @@ module Perscribo
   module Support
     module Core
       module Dsl
+        module ModuleRefinements
+          refine(Module) do
+            def publish!(*names)
+              names.each do |m|
+                module_function(m)
+                public(m)
+              end
+            end
+          end
+        end
+
         module Bootstrappable
-          include Refinements
+          using ModuleRefinements
 
           def self.included(base)
-            base.publish!(:bootstrap!)
             base.extend(MethodMissingHook)
+            base.publish!(:bootstrap!)
           end
 
           # TODO: REFACTOR THIS EVENTUALLY!
@@ -17,9 +28,7 @@ module Perscribo
             def method_missing(method, *args, &block)
               matches = /^(?<target>\w+)_straps$/.match(method)
               target = "#{matches[:target].capitalize}Methods"
-              return lambda do
-                self.const_get(:Bootstraps, false).const_get(target, false)
-              end.call
+              return lambda { self.const_get(:Bootstraps, false).const_get(target, false) }.call
             rescue NameError
               lambda do
                 const_set(:Bootstraps, Module.new) unless const_defined?(:Bootstraps, false)
@@ -33,15 +42,11 @@ module Perscribo
           def bootstrap!(base)
             base.extend(class_straps)
             base.include(instance_straps)
-            base.inside do
-              include(module_straps)
-              instance_methods(false).each(&method(:publish!))
-              prepend(prepend_straps)
+            base.include(module_straps)
+            (module_straps.try(:instance_methods, false) || []).each do |m|
+              base.publish!(m)
             end
-            # (module_straps.try(:instance_methods, false) || []).each do |m|
-            #   m.define_singleton_method(m, &module_straps.instance_method(m))
-            # end
-            # base.send(:prepend, prepend_straps)
+            base.send(:prepend, prepend_straps)
           end
         end
 
@@ -78,23 +83,6 @@ module Perscribo
         #     end
         #   end
         # end
-
-        module Refinements
-          def self.included(base)
-            base.send(:using, ModuleRefinements) if base.is_a?(Module)
-          end
-
-          module ModuleRefinements
-            include refine(Module) do
-              def publish!(*names)
-                names.each do |m|
-                  module_function(i)
-                  public(i)
-                end
-              end
-            end
-          end
-        end
       end
     end
   end
